@@ -17,7 +17,7 @@ func TestFetchDuration(t *testing.T) {
 	sub := pf.Subscribe(100)
 
 	select {
-	case data := <-sub:
+	case data := <-sub.Updates():
 		t.Errorf("unexpected string '%s' on channel", data)
 		return
 	default:
@@ -31,7 +31,7 @@ func TestFetchDuration(t *testing.T) {
 
 	time.Sleep(50 * time.Millisecond)
 	select {
-	case data := <-sub:
+	case data := <-sub.Updates():
 		if data != "1" {
 			t.Errorf("expected '1' to be on channel, got '%s'", data)
 			return
@@ -42,7 +42,7 @@ func TestFetchDuration(t *testing.T) {
 	}
 
 	select {
-	case data := <-sub:
+	case data := <-sub.Updates():
 		t.Errorf("unexpected string '%s' on channel", data)
 		return
 	default:
@@ -51,7 +51,7 @@ func TestFetchDuration(t *testing.T) {
 	time.Sleep(150 * time.Millisecond)
 
 	select {
-	case data := <-sub:
+	case data := <-sub.Updates():
 		if data != "2" {
 			t.Errorf("expected '2' to be on channel, got '%s'", data)
 			return
@@ -81,7 +81,7 @@ func TestSubscribeDataReady(t *testing.T) {
 
 	sub := pf.Subscribe(100)
 	select {
-	case data := <-sub:
+	case data := <-sub.Updates():
 		if data != "1" {
 			t.Errorf("expected '1' to be on channel, got '%s'", data)
 			return
@@ -92,7 +92,7 @@ func TestSubscribeDataReady(t *testing.T) {
 	}
 
 	select {
-	case data := <-sub:
+	case data := <-sub.Updates():
 		t.Errorf("unexpected string '%s' on channel", data)
 		return
 	default:
@@ -101,7 +101,7 @@ func TestSubscribeDataReady(t *testing.T) {
 	time.Sleep(150 * time.Millisecond)
 
 	select {
-	case data := <-sub:
+	case data := <-sub.Updates():
 		if data != "2" {
 			t.Errorf("expected '2' to be on channel, got '%s'", data)
 			return
@@ -129,7 +129,7 @@ func TestFetchAbort(t *testing.T) {
 
 	sub := pf.Subscribe(100)
 
-	for data := range sub {
+	for data := range sub.Updates() {
 		fmt.Println(data)
 	}
 }
