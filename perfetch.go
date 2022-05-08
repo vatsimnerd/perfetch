@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 type (
@@ -33,6 +33,7 @@ type (
 )
 
 var (
+	log        = logrus.WithField("module", "perfetch")
 	ErrAbort   = fmt.Errorf("abort")
 	ErrStopped = fmt.Errorf("stopped fetcher")
 )
