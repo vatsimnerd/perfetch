@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	log "github.com/sirupsen/logrus"
 )
 
 type (
@@ -52,6 +53,7 @@ func New[T any](period time.Duration, fetcher Fetcher[T]) *Server[T] {
 }
 
 func (s *Server[T]) Start() error {
+	log.WithField("period", s.period.String()).Info("starting fetcher")
 	if s.stopped {
 		return ErrStopped
 	}
@@ -70,24 +72,28 @@ func (s *Server[T]) loop() {
 	// initial fetch
 	if s.fetch() {
 		s.ticker = time.NewTicker(s.period)
+		defer s.ticker.Stop()
 	loop:
 		for {
 			select {
 			case <-s.ticker.C:
+				log.Debug("prefetch tick, running fetcher")
 				if !s.fetch() {
+					log.Info("fetcher returns false, quitting")
 					break loop
 				}
 			case <-s.stop:
+				log.Info("got stop signal, quitting")
 				break loop
 			}
 		}
-		s.ticker.Stop()
 	}
 
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	s.stopped = true
 
+	log.Debug("closing subscription channels")
 	for _, sub := range s.subs {
 		close(sub.ch)
 	}
@@ -96,7 +102,6 @@ func (s *Server[T]) loop() {
 
 func (s *Server[T]) fetch() (cont bool) {
 	cont = true
-
 	data, err := s.fetcher()
 
 	if err == nil {
@@ -105,12 +110,15 @@ func (s *Server[T]) fetch() (cont bool) {
 		s.notify()
 	} else if err == ErrAbort {
 		cont = false
+	} else {
+		log.WithError(err).Error("error running fetcher")
 	}
 
 	return
 }
 
 func (s *Server[T]) notify() {
+	log.Debug("notifying subscribers")
 	s.lock.RLock()
 	defer s.lock.RUnlock()
 
@@ -125,7 +133,10 @@ func (s *Server[T]) Subscribe(chSize int) Subscription[T] {
 		ch: make(chan T, chSize),
 	}
 
+	slog := log.WithField("sub_id", sub.id)
+
 	if s.stopped {
+		slog.Debug("perfetch is stopped, closing subscription straight away")
 		close(sub.ch)
 		return sub
 	}
@@ -135,6 +146,7 @@ func (s *Server[T]) Subscribe(chSize int) Subscription[T] {
 	s.lock.Unlock()
 
 	if s.hasData {
+		slog.Debug("sending initial data to new subscriber")
 		sub.ch <- s.data
 	}
 
@@ -142,8 +154,11 @@ func (s *Server[T]) Subscribe(chSize int) Subscription[T] {
 }
 
 func (s *Server[T]) Unsubscribe(sub Subscription[T]) {
+	slog := log.WithField("sub_id", sub.id)
 	s.lock.Lock()
 	defer s.lock.Unlock()
+	slog.Info("removing subscription")
 	delete(s.subs, sub.id)
+	slog.Info("closing subscription channel")
 	close(sub.ch)
 }
