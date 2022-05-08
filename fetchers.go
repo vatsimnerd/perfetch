@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 )
 
 func HTTPGetFetcher(url string, timeout time.Duration) Fetcher[[]byte] {
